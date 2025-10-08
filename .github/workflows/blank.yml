@@ -52,6 +52,14 @@ jobs:
         with:
           access-token: ${{ steps.exchange_token.outputs.ACCESS_TOKEN }}
           url: ${{ env.JFROG_URL }}
+      - name: Explicitly Configure JFrog Server (jf c add)
+        # FIX: Manually adding the server configuration using 'jf c add' 
+        # to guarantee the 'jfrog-server' ID is available in subsequent steps.
+        run: |
+          jf c add jfrog-server \
+            --url ${{ env.JFROG_URL }} \
+            --access-token ${{ steps.exchange_token.outputs.ACCESS_TOKEN }} \
+            --overwrite    
           #server-id: 'jfrog-server' # Explicitly define a known server ID
           # This step configures the server, making 'jfrog-server' available.
 
@@ -69,7 +77,7 @@ jobs:
         run: |
           jf terraform-config \
             --repo-deploy ${{ env.MODULE_REPO_KEY }} \
-            #--server-id-deploy jfrog-server # <--- Explicitly use the named server config
+            --server-id-deploy jfrog-server # <--- Explicitly use the named server config
           
       - name: Publish Terraform Module
         # This command will now use the repository configured in the step above.
