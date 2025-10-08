@@ -25,16 +25,6 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
         
-      # You can skip this step as 'Get ID Token' does this explicitly below.
-      # - name: Fetch OIDC Token
-      #   id: fetch_oidc_token
-      #   uses: jfrog/setup-jfrog-cli@v4
-      #   env:
-      #     JF_URL: ${{ env.JF_URL }}
-      #   with:
-      #     oidc-provider-name: ${{ env.OIDC_PROVIDER }}
-      #     oidc-audience: ${{ env.OIDC_AUDIENCE }}
-
       - name: Get ID Token
         id: get_id_token
         run: |
@@ -57,8 +47,6 @@ jobs:
           
       # ------------------------------------------------------------------
       # STEP 3: Setup JFrog CLI and Configure with Token
-      # NOTE: This step was modified to use the correct step ID for ACCESS_TOKEN
-      # FIX: Added 'server-id' to explicitly name the server configuration.
       # ------------------------------------------------------------------
       - name: Setup JFrog CLI
         uses: jfrog/setup-jfrog-cli@v4
@@ -66,7 +54,7 @@ jobs:
           # Use the token output from the exchange_token step
           access-token: ${{ steps.exchange_token.outputs.ACCESS_TOKEN }}
           url: ${{ env.JFROG_URL }}
-          server-id: 'jfrog-server' # <--- NEW: Explicitly define a known server ID
+          server-id: 'jfrog-server' # Explicitly define a known server ID
 
       # ------------------------------------------------------------------
       # STEP 4: Publish the Module
@@ -76,17 +64,17 @@ jobs:
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
         
       - name: Configure JFrog CLI for Terraform
-        # FIX: Added --server-id-deploy flag to specify which configured server to use for deployment.
+        # Configures the default deployment server/repo for subsequent 'jf tf p' commands
         run: |
           jf terraform-config \
           --repo-deploy ${{ env.MODULE_REPO_KEY }} \
-          --server-id-deploy jfrog-server # <--- NEW: Using the defined server ID
+          --server-id-deploy jfrog-server
           
       - name: Publish Terraform Module
-        # This command correctly uses all the module metadata flags.
+        # FIX: Removed the unsupported --repo flag. 
+        # The deployment repository is now correctly configured via 'jf terraform-config'.
         run: |
           jf tf p \
-            --repo-deploy ${{ env.MODULE_REPO_KEY }} \
             --namespace ${{ env.MODULE_NAMESPACE }} \
             --provider ${{ env.MODULE_PROVIDER }} \
             --tag v${{ steps.get_version.outputs.VERSION }} \
