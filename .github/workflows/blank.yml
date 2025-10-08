@@ -62,6 +62,7 @@ jobs:
             --overwrite    
           #server-id: 'jfrog-server' # Explicitly define a known server ID
           # This step configures the server, making 'jfrog-server' available.
+          jf c show
 
       # ------------------------------------------------------------------
       # STEP 4: Publish the Module
@@ -88,7 +89,7 @@ jobs:
         run: |
           jf terraform-config \
             --repo-deploy ${{ env.MODULE_REPO_KEY }} \
-            --server-id jfrog-server 
+            --server-id-deploy jfrog-server 
           
       - name: Publish Terraform Module
         # This command will now use the repository configured in the step above
