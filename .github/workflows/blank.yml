@@ -53,6 +53,7 @@ jobs:
           access-token: ${{ steps.exchange_token.outputs.ACCESS_TOKEN }}
           url: ${{ env.JFROG_URL }}
           server-id: 'jfrog-server' # Explicitly define a known server ID
+          # This step configures the server, making 'jfrog-server' available.
 
       # ------------------------------------------------------------------
       # STEP 4: Publish the Module
@@ -62,17 +63,16 @@ jobs:
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
         
       - name: Configure JFrog CLI for Terraform
+        # FIX: Removed the failing 'jf c use' and re-added the explicit --server-id-deploy flag.
+        # This tells the 'terraform-config' command to use the server configuration 
+        # that was created in the previous step.
         run: |
-          # FIX: Explicitly activate the configured server ID. This resolves the 
-          # "Server ID 'jfrog-server' does not exist" error.
-          jf c use jfrog-server
-          
-          # Configure the default deployment repository for the active server.
           jf terraform-config \
-            --repo-deploy ${{ env.MODULE_REPO_KEY }} 
+            --repo-deploy ${{ env.MODULE_REPO_KEY }} \
+            --server-id-deploy jfrog-server # <--- Explicitly use the named server config
           
       - name: Publish Terraform Module
-        # This command uses the default server context and repository configuration set above.
+        # This command will now use the repository configured in the step above.
         run: |
           jf tf p \
             --namespace ${{ env.MODULE_NAMESPACE }} \
