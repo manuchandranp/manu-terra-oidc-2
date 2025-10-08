@@ -65,7 +65,7 @@ jobs:
       - name: Configure JFrog CLI for Terraform
         run: |
           jf terraform-config \
-          --repo ${{ env.MODULE_REPO_KEY }} \
+          --repo-deploy ${{ env.MODULE_REPO_KEY }} \
           --namespace ${{ env.MODULE_NAMESPACE }} \
           --provider ${{ env.MODULE_PROVIDER }} \
           --module ${{ env.MODULE_NAME }}
