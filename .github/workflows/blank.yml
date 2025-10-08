@@ -69,6 +69,17 @@ jobs:
       - name: Get Tag Version
         id: get_version
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+      - name: Verify Artifactory Connection and Repository
+        # DIAGNOSTIC STEP: Check if the connection works and if the repository is visible to the authenticated user.
+        run: |
+          echo "Verifying connection and listing repositories for server 'jfrog-server'..."
+          # List all repositories to see what is visible
+          jf rt repos --server-id jfrog-server
+          
+          # Check for the specific repository's details
+          echo "Attempting to retrieve configuration for target repository: ${{ env.MODULE_REPO_KEY }}"
+          # This command will return 200 (OK) if the repo exists and is accessible, or fail otherwise.
+          jf rt curl -XGET "/api/repositories/${{ env.MODULE_REPO_KEY }}" --server-id jfrog-server  
         
       - name: Configure JFrog CLI for Terraform
         # FIX: Removed the failing 'jf c use' and re-added the explicit --server-id-deploy flag.
