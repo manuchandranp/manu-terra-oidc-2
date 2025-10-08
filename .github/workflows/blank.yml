@@ -58,6 +58,7 @@ jobs:
       # ------------------------------------------------------------------
       # STEP 3: Setup JFrog CLI and Configure with Token
       # NOTE: This step was modified to use the correct step ID for ACCESS_TOKEN
+      # FIX: Added 'server-id' to explicitly name the server configuration.
       # ------------------------------------------------------------------
       - name: Setup JFrog CLI
         uses: jfrog/setup-jfrog-cli@v4
@@ -65,6 +66,7 @@ jobs:
           # Use the token output from the exchange_token step
           access-token: ${{ steps.exchange_token.outputs.ACCESS_TOKEN }}
           url: ${{ env.JFROG_URL }}
+          server-id: 'jfrog-server' # <--- NEW: Explicitly define a known server ID
 
       # ------------------------------------------------------------------
       # STEP 4: Publish the Module
@@ -74,11 +76,11 @@ jobs:
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
         
       - name: Configure JFrog CLI for Terraform
-        # FIX: Removed the unsupported flags (--namespace, --provider, --module).
-        # jf terraform-config only takes --repo-deploy and --server-id-deploy.
+        # FIX: Added --server-id-deploy flag to specify which configured server to use for deployment.
         run: |
           jf terraform-config \
-          --repo-deploy ${{ env.MODULE_REPO_KEY }}
+          --repo-deploy ${{ env.MODULE_REPO_KEY }} \
+          --server-id-deploy jfrog-server # <--- NEW: Using the defined server ID
           
       - name: Publish Terraform Module
         # This command correctly uses all the module metadata flags.
