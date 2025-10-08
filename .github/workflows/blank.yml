@@ -8,10 +8,10 @@ env:
   OIDC_PROVIDER: 'manu-new'
   OIDC_AUDIENCE: 'newmanu'
   JFROG_URL: "https://hts2.jfrog.io"
-  MODULE_REPO_KEY: manu-terra-module
-  MODULE_NAMESPACE: mycompany
-  MODULE_PROVIDER: aws
-  MODULE_NAME: my-vpc-module
+  MODULE_REPO_KEY: 'manu-terra-module'
+  MODULE_NAMESPACE: 'mycompany'
+  MODULE_PROVIDER: 'aws'
+  MODULE_NAME: 'my-vpc-module'
 permissions:
   contents: read
   id-token: write
