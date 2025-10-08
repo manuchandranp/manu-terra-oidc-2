@@ -98,4 +98,4 @@ jobs:
             --provider ${{ env.MODULE_PROVIDER }} \
             --tag v${{ steps.get_version.outputs.VERSION }} \
             --module ${{ env.MODULE_NAME }} \
-            --server-id-deploy jfrog-server
+            --project manu-test
