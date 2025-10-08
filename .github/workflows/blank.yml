@@ -97,4 +97,5 @@ jobs:
             --namespace ${{ env.MODULE_NAMESPACE }} \
             --provider ${{ env.MODULE_PROVIDER }} \
             --tag v${{ steps.get_version.outputs.VERSION }} \
-            --module ${{ env.MODULE_NAME }}
+            --module ${{ env.MODULE_NAME }} \
+            --server-id-deploy jfrog-server
