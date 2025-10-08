@@ -80,7 +80,7 @@ jobs:
           # Check for the specific repository's details
           echo "Attempting to retrieve configuration for target repository: ${{ env.MODULE_REPO_KEY }}"
           # This command will return 200 (OK) if the repo exists and is accessible, or fail otherwise.
-          jf rt curl -XGET "/api/repositories/${{ env.MODULE_REPO_KEY }}" --server-id jfrog-server
+          jf rt curl -XGET "/api/repositories/${{ env.MODULE_REPO_KEY }}" --user=manu --password=Password@123
         
       - name: Configure JFrog CLI for Terraform
         # FIX: Removed the failing 'jf c use' and re-added the explicit --server-id-deploy flag.
