@@ -19,7 +19,6 @@ jobs:
   publish-module:
     runs-on: ubuntu-latest
     outputs:
-      # Set output for access token (This is correctly referencing the 'exchange_token' step ID)
       access_token: ${{ steps.exchange_token.outputs.ACCESS_TOKEN }} 
     steps:
       - name: Checkout Repository
@@ -34,7 +33,7 @@ jobs:
           echo "ID_TOKEN=${ID_TOKEN}" >> $GITHUB_ENV
           
       - name: Exchange token with access
-        id: exchange_token # Step ID used for outputting the token
+        id: exchange_token 
         env:
           ID_TOKEN: ${{ env.ID_TOKEN }}
           JFROG_PLATFORM_URL: ${{ env.JFROG_URL }}
@@ -51,7 +50,6 @@ jobs:
       - name: Setup JFrog CLI
         uses: jfrog/setup-jfrog-cli@v4
         with:
-          # Use the token output from the exchange_token step
           access-token: ${{ steps.exchange_token.outputs.ACCESS_TOKEN }}
           url: ${{ env.JFROG_URL }}
           server-id: 'jfrog-server' # Explicitly define a known server ID
@@ -64,15 +62,17 @@ jobs:
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
         
       - name: Configure JFrog CLI for Terraform
-        # Configures the default deployment server/repo for subsequent 'jf tf p' commands
         run: |
+          # FIX: Explicitly activate the configured server ID. This resolves the 
+          # "Server ID 'jfrog-server' does not exist" error.
+          jf c use jfrog-server
+          
+          # Configure the default deployment repository for the active server.
           jf terraform-config \
-          --repo-deploy ${{ env.MODULE_REPO_KEY }} \
-          --server-id-deploy jfrog-server
+            --repo-deploy ${{ env.MODULE_REPO_KEY }} 
           
       - name: Publish Terraform Module
-        # FIX: Removed the unsupported --repo flag. 
-        # The deployment repository is now correctly configured via 'jf terraform-config'.
+        # This command uses the default server context and repository configuration set above.
         run: |
           jf tf p \
             --namespace ${{ env.MODULE_NAMESPACE }} \
