@@ -74,7 +74,7 @@ jobs:
         run: |
           echo "Verifying connection and listing repositories for server 'jfrog-server'..."
           # List all repositories to see what is visible
-          jf rt repos --server-id jfrog-server
+      
           
           # Check for the specific repository's details
           echo "Attempting to retrieve configuration for target repository: ${{ env.MODULE_REPO_KEY }}"
