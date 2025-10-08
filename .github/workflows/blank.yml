@@ -1,0 +1,84 @@
+name: Publish Terraform Module to Artifactory with OIDC
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+' # Trigger on semantic version tags (e.g., v1.0.0)
+
+permissions:
+  id-token: write # REQUIRED: Allows the workflow to fetch the GitHub OIDC token
+  contents: read
+
+env:
+  JFROG_URL: https://hts2.jfrog.io
+  OIDC_PROVIDER_NAME: manu-new # Must match your Artifactory OIDC Configuration Name
+  MODULE_REPO_KEY: manu-terra-module
+  MODULE_NAMESPACE: mycompany
+  MODULE_PROVIDER: aws
+  MODULE_NAME: my-vpc-module
+
+jobs:
+  publish-module:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # -----------------------------------------------
+      # STEP 1: Get GitHub OIDC ID Token
+      # The token is fetched for a specific audience (your JFrog URL)
+      # -----------------------------------------------
+      - name: Get GitHub OIDC ID Token
+        id: id_token
+        uses: actions/configure-pages@v5 # A simple action used to easily get the token
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # -----------------------------------------------
+      # STEP 2: Exchange OIDC ID Token for Artifactory Access Token
+      # Uses the Artifactory /oidc/token endpoint
+      # -----------------------------------------------
+      - name: Exchange for Artifactory Access Token
+        id: jfrog_auth
+        shell: bash
+        env:
+          ID_TOKEN: ${{ steps.id_token.outputs.id_token }}
+        run: |
+          ACCESS_TOKEN=$(curl -s -X POST \
+            -H "Content-type: application/json" \
+            "${{ env.JFROG_URL }}/access/api/v1/oidc/token" \
+            -d "{\"grant_type\": \"urn:ietf:params:oauth:grant-type:token-exchange\", \"subject_token\": \"$ID_TOKEN\", \"subject_token_type\": \"urn:ietf:params:oauth:token-type:id_token\", \"provider_name\": \"${{ env.OIDC_PROVIDER_NAME }}\"}" \
+            | jq -r .access_token)
+          
+          if [ -z "$ACCESS_TOKEN" ] || [ "$ACCESS_TOKEN" == "null" ]; then
+            echo "::error::Failed to retrieve Artifactory Access Token. Check OIDC configuration and identity mapping in Artifactory."
+            exit 1
+          fi
+          
+          echo "access_token=$ACCESS_TOKEN" >> $GITHUB_OUTPUT
+          
+      # -----------------------------------------------
+      # STEP 3: Setup JFrog CLI and Configure with Token
+      # -----------------------------------------------
+      - name: Setup JFrog CLI
+        uses: jfrog/setup-jfrog-cli@v4
+        with:
+          # Use the token output from the previous step
+          access-token: ${{ steps.jfrog_auth.outputs.access_token }}
+          url: ${{ env.JFROG_URL }}
+          
+      # -----------------------------------------------
+      # STEP 4: Publish the Module
+      # -----------------------------------------------
+      - name: Get Tag Version
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Publish Terraform Module
+        run: |
+          jf tf p \
+            --repo ${{ env.MODULE_REPO_KEY }} \
+            --namespace ${{ env.MODULE_NAMESPACE }} \
+            --provider ${{ env.MODULE_PROVIDER }} \
+            --tag v${{ steps.get_version.outputs.VERSION }} \
+            --module ${{ env.MODULE_NAME }}
