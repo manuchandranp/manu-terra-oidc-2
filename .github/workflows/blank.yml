@@ -1,25 +1,6 @@
-name: "Artifactory Generic OIDC Multi-Job"
-on:
-  workflow_dispatch:
-  push:
-    # branches:
-    # - feature/*
-env:
-  OIDC_PROVIDER: 'manu-new'
-  OIDC_AUDIENCE: 'newmanu'
-  JFROG_URL: "https://hts2.jfrog.io"
-  MODULE_REPO_KEY: manu-terra-module
-  MODULE_NAMESPACE: mycompany
-  MODULE_PROVIDER: aws
-  MODULE_NAME: my-vpc-module
-permissions:
-  contents: read
-  id-token: write
 jobs:
   publish-module:
     runs-on: ubuntu-latest
-    outputs:
-      access_token: ${{ steps.exchange_token.outputs.ACCESS_TOKEN }}  # Set output for access token
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -38,33 +19,28 @@ jobs:
           "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=github" | jq .value | tr -d '"')
           echo "ID_TOKEN=${ID_TOKEN}" >> $GITHUB_ENV
       - name: Exchange token with access
-        id: exchange_token  # Added an ID for this step
+        id: exchange_token
         env:
           ID_TOKEN: ${{ env.ID_TOKEN }}
           JFROG_PLATFORM_URL: ${{ env.JFROG_URL }}
         run: |
           ACCESS_TOKEN=$(curl -XPOST -H "Content-Type: application/json" "https://hts2.jfrog.io/access/api/v1/oidc/token" -d "{\"grant_type\": \"urn:ietf:params:oauth:grant-type:token-exchange\", \"subject_token_type\":\"urn:ietf:params:oauth:token-type:id_token\", \"subject_token\": \"${ID_TOKEN}\", \"provider_name\": \"manu-new\"}" | jq .access_token | tr -d '"')
-          echo "::set-output name=ACCESS_TOKEN::${ACCESS_TOKEN}"  # Pass the access token as output
-
-
-
-      # -----------------------------------------------
-      # STEP 3: Setup JFrog CLI and Configure with Token
-      # -----------------------------------------------
+          echo "::set-output name=ACCESS_TOKEN::${ACCESS_TOKEN}"
       - name: Setup JFrog CLI
         uses: jfrog/setup-jfrog-cli@v4
         with:
-          # Use the token output from the previous step
-          ACCESS_TOKEN: ${{ steps.jfrog_auth.outputs.access_token }}
+          ACCESS_TOKEN: ${{ steps.exchange_token.outputs.ACCESS_TOKEN }}
           url: ${{ env.JFROG_URL }}
-
-      # -----------------------------------------------
-      # STEP 4: Publish the Module
-      # -----------------------------------------------
+      - name: Configure JFrog CLI for Terraform
+        run: |
+          jf terraform-config \
+            --repo ${{ env.MODULE_REPO_KEY }} \
+            --namespace ${{ env.MODULE_NAMESPACE }} \
+            --provider ${{ env.MODULE_PROVIDER }} \
+            --module ${{ env.MODULE_NAME }}
       - name: Get Tag Version
         id: get_version
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-        
       - name: Publish Terraform Module
         run: |
           jf tf p \
