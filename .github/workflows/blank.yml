@@ -86,7 +86,7 @@ jobs:
         # This command correctly uses all the module metadata flags.
         run: |
           jf tf p \
-            --repo ${{ env.MODULE_REPO_KEY }} \
+            --repo-deploy ${{ env.MODULE_REPO_KEY }} \
             --namespace ${{ env.MODULE_NAMESPACE }} \
             --provider ${{ env.MODULE_PROVIDER }} \
             --tag v${{ steps.get_version.outputs.VERSION }} \
