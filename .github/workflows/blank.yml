@@ -87,7 +87,7 @@ jobs:
         # that was created in the previous step.
         run: |
           jf terraform-config \
-            --repo-deploy ${{ env.MODULE_REPO_KEY }} \
+            --repo-deploy manu-test \
             --server-id-deploy jfrog-server # <--- Explicitly use the named server config
           
       - name: Publish Terraform Module
