@@ -1,6 +1,25 @@
+name: "Artifactory Generic OIDC Multi-Job"
+on:
+  workflow_dispatch:
+  push:
+    # branches:
+    # - feature/*
+env:
+  OIDC_PROVIDER: 'manu-new'
+  OIDC_AUDIENCE: 'newmanu'
+  JFROG_URL: "https://hts2.jfrog.io"
+  MODULE_REPO_KEY: manu-terra-module
+  MODULE_NAMESPACE: mycompany
+  MODULE_PROVIDER: aws
+  MODULE_NAME: my-vpc-module
+permissions:
+  contents: read
+  id-token: write
 jobs:
   publish-module:
     runs-on: ubuntu-latest
+    outputs:
+      access_token: ${{ steps.exchange_token.outputs.ACCESS_TOKEN }}  # Set output for access token
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -8,7 +27,7 @@ jobs:
         id: fetch_oidc_token
         uses: jfrog/setup-jfrog-cli@v4
         env:
-          JF_URL: ${{ env.JF_URL }}
+          JF_URL: ${{ env.JFROG_URL }}
         with:
           oidc-provider-name: ${{ env.OIDC_PROVIDER }}
           oidc-audience: ${{ env.OIDC_AUDIENCE }}
@@ -24,28 +43,4 @@ jobs:
           ID_TOKEN: ${{ env.ID_TOKEN }}
           JFROG_PLATFORM_URL: ${{ env.JFROG_URL }}
         run: |
-          ACCESS_TOKEN=$(curl -XPOST -H "Content-Type: application/json" "https://hts2.jfrog.io/access/api/v1/oidc/token" -d "{\"grant_type\": \"urn:ietf:params:oauth:grant-type:token-exchange\", \"subject_token_type\":\"urn:ietf:params:oauth:token-type:id_token\", \"subject_token\": \"${ID_TOKEN}\", \"provider_name\": \"manu-new\"}" | jq .access_token | tr -d '"')
-          echo "::set-output name=ACCESS_TOKEN::${ACCESS_TOKEN}"
-      - name: Setup JFrog CLI
-        uses: jfrog/setup-jfrog-cli@v4
-        with:
-          ACCESS_TOKEN: ${{ steps.exchange_token.outputs.ACCESS_TOKEN }}
-          url: ${{ env.JFROG_URL }}
-      - name: Configure JFrog CLI for Terraform
-        run: |
-          jf terraform-config \
-            --repo ${{ env.MODULE_REPO_KEY }} \
-            --namespace ${{ env.MODULE_NAMESPACE }} \
-            --provider ${{ env.MODULE_PROVIDER }} \
-            --module ${{ env.MODULE_NAME }}
-      - name: Get Tag Version
-        id: get_version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-      - name: Publish Terraform Module
-        run: |
-          jf tf p \
-            --repo ${{ env.MODULE_REPO_KEY }} \
-            --namespace ${{ env.MODULE_NAMESPACE }} \
-            --provider ${{ env.MODULE_PROVIDER }} \
-            --tag v${{ steps.get_version.outputs.VERSION }} \
-            --module ${{ env.MODULE_NAME }}
+          ACCESS_TOKEN=$(curl -XPOST -H "Content-Type: application/json" "https://hts2.jfrog.io/access/api/v1/oidc/token" -d "{\"grant_type\":
