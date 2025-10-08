@@ -12,6 +12,7 @@ permissions:
 env:
   JFROG_URL: https://hts2.jfrog.io
   OIDC_PROVIDER_NAME: manu-new # Must match your Artifactory OIDC Configuration Name
+  OIDC_AUDIENCE: 'newmanu'
   MODULE_REPO_KEY: manu-terra-module
   MODULE_NAMESPACE: mycompany
   MODULE_PROVIDER: aws
@@ -32,6 +33,8 @@ jobs:
         id: id_token
         uses: actions/configure-pages@v5 # A simple action used to easily get the token
         with:
+          oidc-provider-name: ${{ env.OIDC_PROVIDER_NAME }}
+          oidc-audience: ${{ env.OIDC_AUDIENCE }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
       # -----------------------------------------------
