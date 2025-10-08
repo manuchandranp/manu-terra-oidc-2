@@ -80,7 +80,7 @@ jobs:
             --server-id-deploy jfrog-server # <--- Explicitly use the named server config
           
       - name: Publish Terraform Module
-        # This command will now use the repository configured in the step above.
+        # This command will now use the repository configured in the step above
         run: |
           jf tf p \
             --namespace ${{ env.MODULE_NAMESPACE }} \
