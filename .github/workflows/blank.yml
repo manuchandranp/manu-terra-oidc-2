@@ -33,8 +33,6 @@ jobs:
         id: id_token
         uses: actions/configure-pages@v5 # A simple action used to easily get the token
         with:
-          oidc-provider-name: ${{ env.OIDC_PROVIDER_NAME }}
-          oidc-audience: ${{ env.OIDC_AUDIENCE }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
       # -----------------------------------------------
