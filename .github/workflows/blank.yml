@@ -74,6 +74,8 @@ jobs:
           ACCESS_TOKEN: ${{ steps.exchange_token.outputs.ACCESS_TOKEN }} 
         
         run: |
+          env:
+          ACCESS_TOKEN: ${{ needs.publish-artifact.outputs.access_token }}
           echo "Configuring JFrog CLI with Access Token (first 10 chars): ${ACCESS_TOKEN:0:10}..."
           jf c add jfrog-server \
             --url ${{ env.JF_URL }} \
