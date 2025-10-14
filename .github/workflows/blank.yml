@@ -8,30 +8,31 @@ env:
   OIDC_PROVIDER: 'manu-new'
   OIDC_AUDIENCE: 'newmanu'
   JF_URL: "https://hts2.jfrog.io"
-  MODULE_REPO_KEY: 'manu-terra-module'
-  MODULE_NAMESPACE: 'mycompany'
-  MODULE_PROVIDER: 'aws'
-  MODULE_NAME: 'my-vpc-module'
 permissions:
   contents: read
   id-token: write
 jobs:
-  publish-module:
+  publish-artifact:
     runs-on: ubuntu-latest
     outputs:
-      access_token: ${{ steps.exchange_token.outputs.ACCESS_TOKEN }} 
+      access_token: ${{ steps.exchange_token.outputs.ACCESS_TOKEN }}  # Set output for access token
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-        
+      - name: Fetch OIDC Token
+        id: fetch_oidc_token
+        uses: jfrog/setup-jfrog-cli@v4
+        env:
+          JF_URL: ${{ env.JF_URL }}
+        with:
+          oidc-provider-name: ${{ env.OIDC_PROVIDER }}
+          oidc-audience: ${{ env.OIDC_AUDIENCE }}
       - name: Get ID Token
         id: get_id_token
         run: |
-          # Fetch the GitHub ID Token with a 'github' audience.
           ID_TOKEN=$(curl -sLS -H "User-Agent: actions/oidc-client" -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
           "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=github" | jq .value | tr -d '"')
           echo "ID_TOKEN=${ID_TOKEN}" >> $GITHUB_ENV
-          
       - name: Exchange token with access
         id: exchange_token  # Added an ID for this step
         env:
