@@ -100,3 +100,12 @@ jobs:
           
           # This should show the server is configured with a token.
           jf c show   
+      - name: Verify Authentication
+        env:
+          ACCESS_TOKEN: ${{ needs.publish-artifact.outputs.access_token }}
+          JF_URL: ${{ env.JF_URL }}
+        run: |
+          echo "Verifying authentication with JFrog..."
+          jf rt ping --server-id jfrog-server
+          echo "Attempting to retrieve configuration for target repository: ${{ env.MODULE_REPO_KEY }}"
+          jf rt curl -XGET "/api/repositories/${{ env.MODULE_REPO_KEY }}" --server-id jfrog-server  
