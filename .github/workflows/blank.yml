@@ -74,6 +74,9 @@ jobs:
           # List all repositories to see what is visible
 
       - name: Verify Authentication
+        env:
+          ACCESS_TOKEN: ${{ needs.publish-artifact.outputs.access_token }}  # Access the output token from the previous job
+          JF_URL: ${{ env.JF_URL }}
         run: |
           echo "Verifying authentication with JFrog..."
            jf rt ping --server-id jfrog-server
