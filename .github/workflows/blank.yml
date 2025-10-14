@@ -84,12 +84,14 @@ jobs:
         uses: jfrog/setup-jfrog-cli@v4  
       - name: Explicitly Configure JFrog Server (jf c add)
         env:
-          ACCESS_TOKEN: ${{ steps.exchange_token.outputs.ACCESS_TOKEN }} 
+          ACCESS_TOKEN: ${{ needs.publish-artifact.outputs.access_token }} 
+          JF_URL: ${{ env.JF_URL }}
           
         run: |
           # DIAGNOSTIC: Check if $ACCESS_TOKEN is available here.
           # If this prints empty, the token is not being passed correctly to the step env.
           echo "Token check in config step (first 10 chars): ${ACCESS_TOKEN:0:10}..."
+          jf rt dl  manu-perm-test/package.json
 
           # This command adds the server configuration, including the access token.
           # It is crucial that this token is not empty.
