@@ -102,6 +102,5 @@ jobs:
           jf c show   
         
           jf c use jfrog-server
-          jf rt ping
           jf rt dl  manu-perm-test/package.json
      
