@@ -78,6 +78,10 @@ jobs:
           JF_URL: ${{ env.JF_URL }}
         run: |
           curl -H "Authorization: Bearer ${ACCESS_TOKEN}" -O "${JF_URL}/artifactory/manu-perm-test/package.json"
+
+        # STEP 3: Setup JFrog CLI and Configure with Token
+      - name: Setup JFrog CLI
+        uses: jfrog/setup-jfrog-cli@v4  
       - name: Explicitly Configure JFrog Server (jf c add)
         env:
           ACCESS_TOKEN: ${{ steps.exchange_token.outputs.ACCESS_TOKEN }} 
