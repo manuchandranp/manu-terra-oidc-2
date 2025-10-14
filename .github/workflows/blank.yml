@@ -57,9 +57,8 @@ jobs:
           # Pass the access token as an output for this step
           echo "::set-output name=ACCESS_TOKEN::${ACCESS_TOKEN}" 
 
-      ---
-      # STEP 3: Setup JFrog CLI and Configure with Token
-      ---
+    
+   
       # NOTE: The access token is retrieved via ${{ steps.exchange_token.outputs.ACCESS_TOKEN }} 
       
       - name: Setup JFrog CLI
