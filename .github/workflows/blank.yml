@@ -39,7 +39,7 @@ jobs:
           JF_URL: ${{ env.JF_URL }}
         with:
           oidc-provider-name: ${{ env.OIDC_PROVIDER }}
-          oidc-audience: ${{ env.OIDC_AUDIENCE }}
+          oidc-audience: 'newmanu'
 
       - name: Get ID Token
         id: get_id_token
