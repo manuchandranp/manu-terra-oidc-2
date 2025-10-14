@@ -8,11 +8,11 @@ env:
   OIDC_PROVIDER: 'manu-new'
   OIDC_AUDIENCE: 'newmanu'
   JF_URL: "https://hts2.jfrog.io"
-  # Add missing environment variables used later in the workflow
-  MODULE_REPO_KEY: 'terraform-local' # Placeholder: Replace with your actual repository key
-  MODULE_NAMESPACE: 'my-namespace'   # Placeholder: Replace with your actual namespace
-  MODULE_PROVIDER: 'my-provider'     # Placeholder: Replace with your actual provider
-  MODULE_NAME: 'vpc'                 # Placeholder: Replace with your actual module name
+  # Placeholder Environment Variables (Update these for your project)
+  MODULE_REPO_KEY: 'terraform-local'
+  MODULE_NAMESPACE: 'my-namespace'
+  MODULE_PROVIDER: 'my-provider'
+  MODULE_NAME: 'vpc'
 
 permissions:
   contents: read
@@ -22,13 +22,16 @@ jobs:
   publish-artifact:
     runs-on: ubuntu-latest
     outputs:
-      # This output is correctly set for use by a potential *subsequent* job
+      # Access token is outputted for potential subsequent jobs
       access_token: ${{ steps.exchange_token.outputs.ACCESS_TOKEN }} 
     
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      # ------------------------------------------------------------------
+      # STEP 1: Get ID Token and Exchange for Access Token
+      # ------------------------------------------------------------------
       - name: Fetch OIDC Token (Setup JFrog CLI for token exchange)
         id: fetch_oidc_token
         uses: jfrog/setup-jfrog-cli@v4
@@ -47,26 +50,35 @@ jobs:
           echo "ID_TOKEN=${ID_TOKEN}" >> $GITHUB_ENV
 
       - name: Exchange token with access
-        id: exchange_token  # THE ID IS USED BELOW TO REFERENCE THE OUTPUT
+        id: exchange_token  # ID used to reference token output
         env:
           ID_TOKEN: ${{ env.ID_TOKEN }}
           JFROG_PLATFORM_URL: ${{ env.JF_URL }}
         run: |
           # Exchange the GitHub ID Token for an Artifactory Access Token
-          ACCESS_TOKEN=$(curl -XPOST -H "Content-Type: application/json" "https://hts2.jfrog.io/access/api/v1/oidc/token" -d "{\"grant_type\": \"urn:ietf:params:oauth:grant-type:token-exchange\", \"subject_token_type\":\"urn:ietf:params:oauth:token-type:id_token\", \"subject_token\": \"${ID_TOKEN}\", \"provider_name\": \"manu-new\"}" | jq .access_token | tr -d '"')
-          # Pass the access token as an output for this step
+          RESPONSE=$(curl -s -XPOST -H "Content-Type: application/json" "${{ env.JF_URL }}/access/api/v1/oidc/token" -d "{\"grant_type\": \"urn:ietf:params:oauth:grant-type:token-exchange\", \"subject_token_type\":\"urn:ietf:params:oauth:token-type:id_token\", \"subject_token\": \"${ID_TOKEN}\", \"provider_name\": \"manu-new\"}")
+          
+          # DIAGNOSTIC: Print the full response to check for errors/token
+          echo "Token Exchange Response (may contain sensitive data): ${RESPONSE}"
+          
+          ACCESS_TOKEN=$(echo "${RESPONSE}" | jq .access_token | tr -d '"')
+          
+          # CRITICAL CHECK: Fail if no access token is retrieved
+          if [ -z "$ACCESS_TOKEN" ]; then
+            echo "::error::Failed to retrieve Artifactory Access Token. Check provider name and permissions."
+            exit 1
+          fi
+          
+          # Set output for use by subsequent steps and jobs
           echo "::set-output name=ACCESS_TOKEN::${ACCESS_TOKEN}" 
 
-    
-   
-      # NOTE: The access token is retrieved via ${{ steps.exchange_token.outputs.ACCESS_TOKEN }} 
+      ---
+      # STEP 2: Configure JFrog CLI with Access Token
+      ---
       
-      - name: Setup JFrog CLI
+      - name: Setup JFrog CLI (redundant, but good practice)
         uses: jfrog/setup-jfrog-cli@v4
-        env:
-          # CORRECTED: Access token from the previous step's output
-          ACCESS_TOKEN: ${{ steps.exchange_token.outputs.ACCESS_TOKEN }} 
-          JF_URL: ${{ env.JF_URL }}
+        # Note: We are setting up the server explicitly below, so passing the token here isn't strictly necessary.
 
       - name: Explicitly Configure JFrog Server (jf c add)
         env:
@@ -74,48 +86,5 @@ jobs:
           ACCESS_TOKEN: ${{ steps.exchange_token.outputs.ACCESS_TOKEN }} 
         
         run: |
-          env:
-          ACCESS_TOKEN: ${{ needs.publish-artifact.outputs.access_token }}
-          echo "Configuring JFrog CLI with Access Token (first 10 chars): ${ACCESS_TOKEN:0:10}..."
-          jf c add jfrog-server \
-            --url ${{ env.JF_URL }} \
-            --access-token ${ACCESS_TOKEN} \
-            --overwrite  
-          jf c show
-
-      - name: Get Tag Version
-        id: get_version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-
-      - name: Verify Artifactory Connection and Repository
-        run: |
-          echo "Verifying connection and listing repositories for server 'jfrog-server'..."
-
-      - name: Verify Authentication
-        env:
-          # CORRECTED: Access token from the previous step's output
-          ACCESS_TOKEN: ${{ steps.exchange_token.outputs.ACCESS_TOKEN }} 
-          JF_URL: ${{ env.JF_URL }}
-        run: |
-          echo "Verifying authentication with JFrog..."
-          # This should now succeed with the correctly configured token
-          jf rt ping --server-id jfrog-server
-          
-          echo "Attempting to retrieve configuration for target repository: ${{ env.MODULE_REPO_KEY }}"
-          # Check for the specific repository's details
-          jf rt curl -XGET "/api/repositories/${{ env.MODULE_REPO_KEY }}" \
-              --server-id jfrog-server
-        
-      - name: Configure JFrog CLI for Terraform
-        run: |
-          jf terraform-config \
-            --repo-deploy ${{ env.MODULE_REPO_KEY }} \
-            --server-id-deploy jfrog-server 
-          
-      - name: Publish Terraform Module
-        run: |
-          jf tf p \
-            --namespace ${{ env.MODULE_NAMESPACE }} \
-            --provider ${{ env.MODULE_PROVIDER }} \
-            --tag v${{ steps.get_version.outputs.VERSION }} \
-            --module ${{ env.MODULE_NAME }}
+          # Verify that the token is present before configuration
+          echo "Configuring JFrog CLI with Access Token
