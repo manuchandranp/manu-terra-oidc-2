@@ -41,6 +41,6 @@ jobs:
         id: exchange_token
         env:
           ID_TOKEN: ${{ env.ID_TOKEN }}
-          JFROG_PLATFORM_URL: ${{ env.JF_URL }}
+          JF_URL: ${{ env.JF_URL }}
         run: |
           ACCESS_TOKEN=$(curl -XPOST -H "Content-Type: application/json" "https://hts2.jfrog.io/access/api/v1/oidc/token"
