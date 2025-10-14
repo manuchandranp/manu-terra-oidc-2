@@ -100,6 +100,7 @@ jobs:
           
           # This should show the server is configured with a token.
           jf c show   
+          jf c use jfrog-server
       - name: Verify Authentication
         env:
           ACCESS_TOKEN: ${{ needs.publish-artifact.outputs.access_token }}
