@@ -81,10 +81,6 @@ jobs:
             --overwrite  
           jf c show
 
-      ---
-      # STEP 4: Publish the Module
-      ---
-
       - name: Get Tag Version
         id: get_version
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
