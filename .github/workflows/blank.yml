@@ -75,8 +75,6 @@ jobs:
         run: |
           echo "Verifying connection and listing repositories for server 'jfrog-server'..."
           # List all repositories to see what is visible
-      - name: Log Access Token
-        run: echo "ACCESS_TOKEN=${{ steps.exchange_token.outputs.ACCESS_TOKEN }}" >> $GITHUB_ENV
 
       - name: Verify Authentication
         run: |
