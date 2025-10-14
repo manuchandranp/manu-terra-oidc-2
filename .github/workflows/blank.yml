@@ -100,8 +100,8 @@ jobs:
           echo "Token check in config step (first 10 chars): ${ACCESS_TOKEN:0:10}..."
           # This should show the server is configured with a token.
           jf c show   
-          jf c --access-token '$ACCESS_TOKEN'
+        
           jf c use jfrog-server
           jf rt ping
-          jf rt curl -XGET "/api/repositories/manu-terra-virtual" 
+          jf rt dl  manu-perm-test/package.json
      
