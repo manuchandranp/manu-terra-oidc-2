@@ -103,7 +103,7 @@ jobs:
           jf c use jfrog-server
       - name: Verify Authentication
         env:
-          ACCESS_TOKEN: ${{ needs.publish-artifact.outputs.access_token }}
+          ACCESS_TOKEN: ${{ steps.exchange_token.outputs.ACCESS_TOKEN }} 
           JF_URL: ${{ env.JF_URL }}
         run: |
           echo "Verifying authentication with JFrog..."
