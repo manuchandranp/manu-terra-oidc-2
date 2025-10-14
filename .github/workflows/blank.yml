@@ -1,21 +1,20 @@
 name: "Artifactory Generic OIDC Multi-Job"
 on:
-workflow_dispatch:
-push:
-# branches:
-# - feature/*
+  workflow_dispatch:
+  push:
+    # branches:
+    # - feature/*
 env:
-OIDC_PROVIDER: 'manu-new'
-OIDC_AUDIENCE: 'newmanu'
-JF_URL: "https://hts2.jfrog.io"
+ OIDC_PROVIDER: 'manu-new'
+ OIDC_AUDIENCE: 'newmanu'
+ JF_URL: "https://hts2.jfrog.io"
 permissions:
-contents: read
-id-token: write
-
+ contents: read
+ id-token: write
 jobs:
-publish-artifact:
-runs-on: ubuntu-latest
-outputs:
+  publish-artifact:
+   runs-on: ubuntu-latest
+    outputs:
 # Set output for access token so the next job can use it
 access_token: ${{ steps.exchange_token.outputs.ACCESS_TOKEN }}
 
