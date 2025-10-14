@@ -102,39 +102,4 @@ steps:
       # Format: jf tf p <zip-file-path> <module-namespace> <module-name> <provider-name> <module-version>
       jf tf p ${{ env.ZIP_FILE }} ${{ env.MODULE_NAMESPACE }} ${{ env.MODULE_NAME }} ${{ env.PROVIDER_NAME }} ${{ env.MODULE_VERSION }}
 
-download-artifact:
-needs: publish-artifact
-runs-on: ubuntu-latest
-steps:
-- name: Checkout Repository
-uses: actions/checkout@v4
 
-  - name: Fetch OIDC Token (Setup JFrog CLI for this job)
-    # Necessary to ensure the 'jf' binary is available in this job
-    uses: jfrog/setup-jfrog-cli@v4 
-    env:
-      JF_URL: ${{ env.JF_URL }}
-    with:
-      # Only installing the CLI here, not exchanging tokens again
-      version: 2
-      
-  # --- JFROG CLI Configuration Added to Download Job ---
-  - name: Configure JFrog CLI with Access Token from previous job
-    env:
-      ACCESS_TOKEN: ${{ needs.publish-artifact.outputs.access_token }}
-    run: |
-      # Add and use the configuration profile in this job as well
-      jf c add jfrog-oidc-config --access-token=${{ env.ACCESS_TOKEN }} --url=${{ env.JF_URL }} --overwrite
-      jf c use jfrog-oidc-config
-
-  - name: Download File from JFrog Repo
-    env:
-      JF_URL: ${{ env.JF_URL }}
-      ACCESS_TOKEN: ${{ needs.publish-artifact.outputs.access_token }}
-    run: |
-      # Keep the curl command as a test for the access token functionality
-      curl -H "Authorization: Bearer ${ACCESS_TOKEN}" -O "${JF_URL}/artifactory/manu-perm-test/package.json"
-      
-      # Example of downloading the published Terraform module using JFrog CLI
-      # Note: Actual download path would depend on the module name and version
-      # jf rt dl manu-terra-virtual/${{ env.MODULE_NAMESPACE }}/vpc/aws/${{ github.ref_name }} --flat
