@@ -1,46 +1,140 @@
 name: "Artifactory Generic OIDC Multi-Job"
 on:
-  workflow_dispatch:
-  push:
-    # branches:
-    # - feature/*
+workflow_dispatch:
+push:
+# branches:
+# - feature/*
 env:
-  OIDC_PROVIDER: 'manu-new'
-  OIDC_AUDIENCE: 'newmanu'
-  JF_URL: "https://hts2.jfrog.io"
+OIDC_PROVIDER: 'manu-new'
+OIDC_AUDIENCE: 'newmanu'
+JF_URL: "https://hts2.jfrog.io"
 permissions:
-  contents: read
-  id-token: write
+contents: read
+id-token: write
 
 jobs:
-  publish-artifact:
-    runs-on: ubuntu-latest
-    outputs:
-      access_token: ${{ steps.exchange_token.outputs.ACCESS_TOKEN }}
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+publish-artifact:
+runs-on: ubuntu-latest
+outputs:
+# Set output for access token so the next job can use it
+access_token: ${{ steps.exchange_token.outputs.ACCESS_TOKEN }}
 
-      - name: Fetch OIDC Token
-        id: fetch_oidc_token
-        uses: jfrog/setup-jfrog-cli@v4
-        env:
-          JF_URL: ${{ env.JF_URL }}
-        with:
-          oidc-provider-name: ${{ env.OIDC_PROVIDER }}
-          oidc-audience: ${{ env.OIDC_AUDIENCE }}
+steps:
+  - name: Checkout Repository
+    uses: actions/checkout@v4
 
-      - name: Get ID Token
-        id: get_id_token
-        run: |
-          ID_TOKEN=$(curl -sLS -H "User-Agent: actions/oidc-client" -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-          "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=github" | jq -r .value | tr -d '"')
-          echo "ID_TOKEN=${ID_TOKEN}" >> $GITHUB_ENV
+  # Sets up JFrog CLI, which is necessary for the next steps
+  - name: Fetch OIDC Token (Setup JFrog CLI)
+    id: fetch_oidc_token
+    uses: jfrog/setup-jfrog-cli@v4
+    env:
+      JF_URL: ${{ env.JF_URL }}
+    with:
+      # Note: While this step sets up the CLI, we perform the token exchange manually below
+      # as structured in the original workflow, then configure the CLI manually.
+      oidc-provider-name: ${{ env.OIDC_PROVIDER }}
+      oidc-audience: ${{ env.OIDC_AUDIENCE }}
 
-      - name: Exchange token with access
-        id: exchange_token
-        env:
-          ID_TOKEN: ${{ env.ID_TOKEN }}
-          JF_URL: ${{ env.JF_URL }}
-        run: |
-          ACCESS_TOKEN=$(curl -XPOST -H "Content-Type: application/json" "https://hts2.jfrog.io/access/api/v1/oidc/token"
+  - name: Get GitHub ID Token
+    id: get_id_token
+    run: |
+      # Fetch the ID token issued by GitHub for this workflow run
+      ID_TOKEN=$(curl -sLS -H "User-Agent: actions/oidc-client" -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+      "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=github" | jq .value | tr -d '"')
+      echo "ID_TOKEN=${ID_TOKEN}" >> $GITHUB_ENV
+
+  - name: Exchange token with access
+    id: exchange_token 
+    env:
+      ID_TOKEN: ${{ env.ID_TOKEN }}
+      JFROG_PLATFORM_URL: ${{ env.JF_URL }}
+    run: |
+      # Exchange the GitHub ID token for a JFrog Access Token
+      ACCESS_TOKEN=$(curl -XPOST -H "Content-Type: application/json" "${JFROG_PLATFORM_URL}/access/api/v1/oidc/token" -d "{\"grant_type\": \"urn:ietf:params:oauth:grant-type:token-exchange\", \"subject_token_type\":\"urn:ietf:params:oauth:token-type:id_token\", \"subject_token\": \"${ID_TOKEN}\", \"provider_name\": \"manu-new\"}" | jq .access_token | tr -d '"')
+      
+      # Set output for next job and environment variable for current job
+      echo "::set-output name=ACCESS_TOKEN::${ACCESS_TOKEN}"
+      echo "ACCESS_TOKEN=${ACCESS_TOKEN}" >> $GITHUB_ENV
+  
+  # --- JFROG CLI Configuration Added ---
+  - name: Configure JFrog CLI with Access Token
+    run: |
+      # Add a configuration profile using the dynamically generated Access Token
+      jf c add jfrog-oidc-config --access-token=${{ env.ACCESS_TOKEN }} --url=${{ env.JF_URL }} --overwrite
+      # Use this configuration for all subsequent 'jf' commands
+      jf c use jfrog-oidc-config
+
+  # --- Publishing a Terraform Module ---
+  # Artifactory requires the module to be packed into a ZIP file
+  - name: Archive Terraform Module
+    run: |
+      # Example: zip up your module source files
+      MODULE_VERSION=${{ github.ref_name }}
+      MODULE_NAME='vpc' # e.g., my-module-name
+      MODULE_NAMESPACE='myorg' # e.g., your-namespace
+      PROVIDER_NAME='aws' # IMPORTANT: Define the provider name here (e.g., 'aws', 'azurerm', 'google')
+
+      # Create the required zip file name: <MODULE_NAME>-<PROVIDER_NAME>-<VERSION>.zip
+      ZIP_FILE="${MODULE_NAME}-${PROVIDER_NAME}-${MODULE_VERSION}.zip"
+      zip -r $ZIP_FILE . -x '*.git*' '*.git*'
+      echo "ZIPPING complete. File: $ZIP_FILE"
+      
+      # Export variables for publishing
+      echo "MODULE_NAMESPACE=$MODULE_NAMESPACE" >> $GITHUB_ENV
+      echo "MODULE_NAME=$MODULE_NAME" >> $GITHUB_ENV
+      echo "MODULE_VERSION=$MODULE_VERSION" >> $GITHUB_ENV
+      echo "ZIP_FILE=$ZIP_FILE" >> $GITHUB_ENV
+      echo "PROVIDER_NAME=$PROVIDER_NAME" >> $GITHUB_ENV
+      
+      echo "ls -la"
+      echo "pwd"
+
+  - name: Configure JFrog Terraform Provider Mapping (jf tf config)
+    # Maps the local provider name (e.g., 'aws') to the target Artifactory repository
+    run: |
+      # Format: jf tf config <repo-key> <provider-name>
+      # This tells the CLI where to put modules for the 'aws' provider.
+      jf tf config manu-terra-virtual ${{ env.PROVIDER_NAME }}
+
+  - name: Publish Terraform Module to Artifactory (jf tf p)
+    # Use 'jf tf p' to publish the module to the configured Artifactory repository
+    run: |
+      # Format: jf tf p <zip-file-path> <module-namespace> <module-name> <provider-name> <module-version>
+      jf tf p ${{ env.ZIP_FILE }} ${{ env.MODULE_NAMESPACE }} ${{ env.MODULE_NAME }} ${{ env.PROVIDER_NAME }} ${{ env.MODULE_VERSION }}
+
+download-artifact:
+needs: publish-artifact
+runs-on: ubuntu-latest
+steps:
+- name: Checkout Repository
+uses: actions/checkout@v4
+
+  - name: Fetch OIDC Token (Setup JFrog CLI for this job)
+    # Necessary to ensure the 'jf' binary is available in this job
+    uses: jfrog/setup-jfrog-cli@v4 
+    env:
+      JF_URL: ${{ env.JF_URL }}
+    with:
+      # Only installing the CLI here, not exchanging tokens again
+      version: 2
+      
+  # --- JFROG CLI Configuration Added to Download Job ---
+  - name: Configure JFrog CLI with Access Token from previous job
+    env:
+      ACCESS_TOKEN: ${{ needs.publish-artifact.outputs.access_token }}
+    run: |
+      # Add and use the configuration profile in this job as well
+      jf c add jfrog-oidc-config --access-token=${{ env.ACCESS_TOKEN }} --url=${{ env.JF_URL }} --overwrite
+      jf c use jfrog-oidc-config
+
+  - name: Download File from JFrog Repo
+    env:
+      JF_URL: ${{ env.JF_URL }}
+      ACCESS_TOKEN: ${{ needs.publish-artifact.outputs.access_token }}
+    run: |
+      # Keep the curl command as a test for the access token functionality
+      curl -H "Authorization: Bearer ${ACCESS_TOKEN}" -O "${JF_URL}/artifactory/manu-perm-test/package.json"
+      
+      # Example of downloading the published Terraform module using JFrog CLI
+      # Note: Actual download path would depend on the module name and version
+      # jf rt dl manu-terra-virtual/${{ env.MODULE_NAMESPACE }}/vpc/aws/${{ github.ref_name }} --flat
