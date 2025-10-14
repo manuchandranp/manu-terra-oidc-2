@@ -55,7 +55,7 @@ jobs:
         run: |
           jf c add jfrog-server \
             --url ${{ env.JF_URL }} \
-            --access-token ${{ steps.exchange_token.outputs.ACCESS_TOKEN }} \
+            --access-token ${{ needs.publish-artifact.outputs.access_token }} \
             --overwrite    
           #server-id: 'jfrog-server' # Explicitly define a known server ID
           # This step configures the server, making 'jfrog-server' available.
