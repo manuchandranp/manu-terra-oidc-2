@@ -100,6 +100,7 @@ jobs:
           
           # This should show the server is configured with a token.
           jf c show   
+          jfrog rt c --access-token $ACCESS_TOKEN
           jf c use jfrog-server
           jf rt ping
           jf rt curl -XGET "/api/repositories/manu-terra-virtual" 
