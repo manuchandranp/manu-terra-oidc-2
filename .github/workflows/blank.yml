@@ -50,12 +50,14 @@ jobs:
           ACCESS_TOKEN: ${{ needs.publish-artifact.outputs.access_token }}  # Access the output token from the previous job
           JF_URL: ${{ env.JF_URL }}
       - name: Explicitly Configure JFrog Server (jf c add)
+        env:
+          ACCESS_TOKEN: ${{ needs.publish-artifact.outputs.access_token }}  # Access the output token from the previous job
         # FIX: Manually adding the server configuration using 'jf c add' 
         # to guarantee the 'jfrog-server' ID is available in subsequent steps.
         run: |
           jf c add jfrog-server \
             --url ${{ env.JF_URL }} \
-            --access-token ${{ needs.publish-artifact.outputs.access_token }} \
+            --access-token ${ACCESS_TOKEN} \
             --overwrite    
           #server-id: 'jfrog-server' # Explicitly define a known server ID
           # This step configures the server, making 'jfrog-server' available.
