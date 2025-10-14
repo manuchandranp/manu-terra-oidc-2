@@ -78,3 +78,21 @@ jobs:
           JF_URL: ${{ env.JF_URL }}
         run: |
           curl -H "Authorization: Bearer ${ACCESS_TOKEN}" -O "${JF_URL}/artifactory/manu-perm-test/package.json"
+      - name: Explicitly Configure JFrog Server (jf c add)
+        env:
+          ACCESS_TOKEN: ${{ steps.exchange_token.outputs.ACCESS_TOKEN }} 
+          
+        run: |
+          # DIAGNOSTIC: Check if $ACCESS_TOKEN is available here.
+          # If this prints empty, the token is not being passed correctly to the step env.
+          echo "Token check in config step (first 10 chars): ${ACCESS_TOKEN:0:10}..."
+
+          # This command adds the server configuration, including the access token.
+          # It is crucial that this token is not empty.
+          jf c add jfrog-server \
+            --url ${{ env.JF_URL }} \
+            --access-token ${ACCESS_TOKEN} \
+            --overwrite  
+          
+          # This should show the server is configured with a token.
+          jf c show   
