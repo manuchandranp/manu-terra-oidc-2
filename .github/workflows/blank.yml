@@ -46,9 +46,9 @@ jobs:
       # ------------------------------------------------------------------
       - name: Setup JFrog CLI
         uses: jfrog/setup-jfrog-cli@v4
-        with:
-          access-token: ${{ steps.exchange_token.outputs.ACCESS_TOKEN }}
-          url: ${{ env.JF_URL }}
+        env:
+          ACCESS_TOKEN: ${{ needs.publish-artifact.outputs.access_token }}  # Access the output token from the previous job
+          JF_URL: ${{ env.JF_URL }}
       - name: Explicitly Configure JFrog Server (jf c add)
         # FIX: Manually adding the server configuration using 'jf c add' 
         # to guarantee the 'jfrog-server' ID is available in subsequent steps.
